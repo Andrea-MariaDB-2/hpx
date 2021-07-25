@@ -78,7 +78,7 @@ namespace hpx { namespace util {
             auto* self = hpx::threads::get_self_ptr();
             if (self != nullptr)
             {
-                threads::get_thread_id_data(self->get_thread_id())
+                desc_ = threads::get_thread_id_data(self->get_thread_id())
                     ->set_description(name);
             }
 
@@ -95,7 +95,7 @@ namespace hpx { namespace util {
             auto* self = hpx::threads::get_self_ptr();
             if (self != nullptr)
             {
-                threads::get_thread_id_data(self->get_thread_id())
+                desc_ = threads::get_thread_id_data(self->get_thread_id())
                     ->set_description(hpx::util::thread_description(f));
             }
 

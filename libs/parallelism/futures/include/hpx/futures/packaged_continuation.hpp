@@ -294,7 +294,7 @@ namespace hpx { namespace lcos { namespace detail {
 
             hpx::intrusive_ptr<continuation> this_(this);
             hpx::util::thread_description desc(f_, "async");
-            spawner(
+            this->runs_child_ = spawner(
                 [this_ = std::move(this_), f = std::move(f)]() mutable -> void {
                     this_->async_impl(std::move(f));
                 },
@@ -324,7 +324,7 @@ namespace hpx { namespace lcos { namespace detail {
 
             hpx::intrusive_ptr<continuation> this_(this);
             hpx::util::thread_description desc(f_, "async_nounwrap");
-            spawner(
+            this->runs_child_ = spawner(
                 [this_ = std::move(this_), f = std::move(f)]() mutable -> void {
                     this_->async_impl_nounwrap(std::move(f));
                 },
@@ -445,7 +445,7 @@ namespace hpx { namespace lcos { namespace detail {
                     spawner = std::move(spawner)]() mutable -> void {
                     if (hpx::detail::has_async_policy(policy))
                     {
-                        this_->async(std::move(state), spawner);
+                        this_->async(std::move(state), std::move(spawner));
                     }
                     else
                     {
@@ -518,7 +518,8 @@ namespace hpx { namespace lcos { namespace detail {
                     spawner = std::move(spawner)]() mutable -> void {
                     if (hpx::detail::has_async_policy(policy))
                     {
-                        this_->async_nounwrap(std::move(state), spawner);
+                        this_->async_nounwrap(
+                            std::move(state), std::move(spawner));
                     }
                     else
                     {

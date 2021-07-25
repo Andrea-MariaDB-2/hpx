@@ -199,12 +199,14 @@ namespace hpx { namespace lcos { namespace detail {
     {
         future_data_base()
           : state_(empty)
+          , runs_child_(threads::invalid_thread_id)
         {
         }
 
         future_data_base(init_no_addref no_addref)
           : future_data_refcnt_base(no_addref)
           , state_(empty)
+          , runs_child_(threads::invalid_thread_id)
         {
         }
 
@@ -306,10 +308,15 @@ namespace hpx { namespace lcos { namespace detail {
         }
 
     protected:
+        // try to perform scoped execution of the associated thread (if any)
+        bool execute_thread();
+
+    protected:
         mutable mutex_type mtx_;
         std::atomic<state> state_;    // current state
         completed_callback_vector_type on_completed_;
         local::detail::condition_variable cond_;    // threads waiting in read
+        threads::thread_id_ref_type runs_child_;
     };
 
     struct in_place
@@ -448,6 +455,10 @@ namespace hpx { namespace lcos { namespace detail {
                 return;
             }
 
+            // reset runs_child_ thread id to avoid keeping the thread
+            // alive as long as the future
+            this->base_type::runs_child_.reset();
+
             // Note: we use notify_one repeatedly instead of notify_all as we
             //       know: a) that most of the time we have at most one thread
             //       waiting on the future (most futures are not shared), and
@@ -506,6 +517,10 @@ namespace hpx { namespace lcos { namespace detail {
                     "data has already been set for this future");
                 return;
             }
+
+            // reset runs_child_ thread id to avoid keeping the thread
+            // alive as long as the future
+            this->base_type::runs_child_.reset();
 
             // Note: we use notify_one repeatedly instead of notify_all as we
             //       know: a) that most of the time we have at most one thread
@@ -793,6 +808,9 @@ namespace hpx { namespace lcos { namespace detail {
         {
             if (!started_test_and_set())
                 this->do_run();
+
+            // attempt to directly execute thread
+            this->execute_thread();
         }
 
         // retrieving the value
@@ -800,6 +818,9 @@ namespace hpx { namespace lcos { namespace detail {
         {
             if (!started_test_and_set())
                 this->do_run();
+
+            // attempt to directly execute thread
+            this->execute_thread();
             return this->future_data<Result>::get_result(ec);
         }
 
@@ -808,6 +829,9 @@ namespace hpx { namespace lcos { namespace detail {
         {
             if (!started_test_and_set())
                 this->do_run();
+
+            // attempt to directly execute thread
+            this->execute_thread();
             return this->future_data<Result>::wait(ec);
         }
 
@@ -817,6 +841,9 @@ namespace hpx { namespace lcos { namespace detail {
         {
             if (!started_test())
                 return future_status::deferred;    //-V110
+
+            // attempt to directly execute thread
+            this->execute_thread();
             return this->future_data<Result>::wait_until(abs_time, ec);
         }
 

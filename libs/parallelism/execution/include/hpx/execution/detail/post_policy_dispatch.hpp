@@ -35,14 +35,8 @@ namespace hpx { namespace parallel { namespace execution { namespace detail {
         {
             if (policy == launch::sync)
             {
-                using result_type =
-                    typename hpx::util::detail::invoke_deferred_result<F,
-                        Ts...>::type;
-
-                using is_void = typename std::is_void<result_type>::type;
                 hpx::detail::call_sync(
-                    is_void{}, std::forward<F>(f), std::forward<Ts>(ts)...);
-                return;
+                    std::forward<F>(f), std::forward<Ts>(ts)...);
             }
 
             threads::thread_init_data data(
@@ -50,6 +44,7 @@ namespace hpx { namespace parallel { namespace execution { namespace detail {
                     std::forward<F>(f), std::forward<Ts>(ts)...)),
                 desc, priority, hint, stacksize,
                 threads::thread_schedule_state::pending);
+
             threads::register_work(data, pool);
         }
 
@@ -62,14 +57,8 @@ namespace hpx { namespace parallel { namespace execution { namespace detail {
         {
             if (policy == launch::sync)
             {
-                using result_type =
-                    typename hpx::util::detail::invoke_deferred_result<F,
-                        Ts...>::type;
-
-                using is_void = typename std::is_void<result_type>::type;
                 hpx::detail::call_sync(
-                    is_void{}, std::forward<F>(f), std::forward<Ts>(ts)...);
-                return;
+                    std::forward<F>(f), std::forward<Ts>(ts)...);
             }
 
             threads::thread_init_data data(
@@ -77,6 +66,7 @@ namespace hpx { namespace parallel { namespace execution { namespace detail {
                     std::forward<F>(f), std::forward<Ts>(ts)...)),
                 desc, priority, hint, stacksize,
                 threads::thread_schedule_state::pending);
+
             threads::register_work(data);
         }
 
@@ -86,22 +76,18 @@ namespace hpx { namespace parallel { namespace execution { namespace detail {
         {
             if (policy == launch::sync)
             {
-                using result_type =
-                    typename hpx::util::detail::invoke_deferred_result<F,
-                        Ts...>::type;
-
-                using is_void = typename std::is_void<result_type>::type;
                 hpx::detail::call_sync(
-                    is_void{}, std::forward<F>(f), std::forward<Ts>(ts)...);
-                return;
+                    std::forward<F>(f), std::forward<Ts>(ts)...);
             }
 
+            threads::thread_schedule_hint hint;
             threads::thread_init_data data(
                 threads::make_thread_function_nullary(hpx::util::deferred_call(
                     std::forward<F>(f), std::forward<Ts>(ts)...)),
-                desc, policy.priority(), threads::thread_schedule_hint(),
+                desc, policy.priority(), hint,
                 threads::thread_stacksize::default_,
                 threads::thread_schedule_state::pending);
+
             threads::register_work(data);
         }
     };
@@ -114,16 +100,14 @@ namespace hpx { namespace parallel { namespace execution { namespace detail {
             hpx::util::thread_description const& desc,
             threads::thread_pool_base* pool, threads::thread_priority priority,
             threads::thread_stacksize stacksize,
-            threads::thread_schedule_hint /*hint*/, F&& f, Ts&&... ts)
+            threads::thread_schedule_hint outer_hint, F&& f, Ts&&... ts)
         {
             threads::thread_init_data data(
                 threads::make_thread_function_nullary(hpx::util::deferred_call(
                     std::forward<F>(f), std::forward<Ts>(ts)...)),
-                desc, priority,
-                threads::thread_schedule_hint(
-                    static_cast<std::int16_t>(get_worker_thread_num())),
-                stacksize,
+                desc, priority, outer_hint, stacksize,
                 threads::thread_schedule_state::pending_do_not_schedule, true);
+
             threads::thread_id_ref_type tid =
                 threads::register_thread(data, pool);
             threads::thread_id_type tid_self = threads::get_self_id();
@@ -173,15 +157,9 @@ namespace hpx { namespace parallel { namespace execution { namespace detail {
             threads::thread_pool_base* /* pool */,
             threads::thread_priority /* priority */,
             threads::thread_stacksize /* stacksize */,
-            threads::thread_schedule_hint /*hint*/, F&& f, Ts&&... ts)
+            threads::thread_schedule_hint /*hint*/, F&& f, Ts&&... ts) noexcept
         {
-            using result_type =
-                typename hpx::util::detail::invoke_deferred_result<F,
-                    Ts...>::type;
-
-            using is_void = typename std::is_void<result_type>::type;
-            hpx::detail::call_sync(
-                is_void{}, std::forward<F>(f), std::forward<Ts>(ts)...);
+            hpx::detail::call_sync(std::forward<F>(f), std::forward<Ts>(ts)...);
         }
 
         template <typename F, typename... Ts>
@@ -189,28 +167,18 @@ namespace hpx { namespace parallel { namespace execution { namespace detail {
             hpx::util::thread_description const& /* desc */,
             threads::thread_priority /* priority */,
             threads::thread_stacksize /* stacksize */,
-            threads::thread_schedule_hint /* hint */, F&& f, Ts&&... ts)
+            threads::thread_schedule_hint /* hint */, F&& f,
+            Ts&&... ts) noexcept
         {
-            using result_type =
-                typename hpx::util::detail::invoke_deferred_result<F,
-                    Ts...>::type;
-
-            using is_void = typename std::is_void<result_type>::type;
-            hpx::detail::call_sync(
-                is_void{}, std::forward<F>(f), std::forward<Ts>(ts)...);
+            hpx::detail::call_sync(std::forward<F>(f), std::forward<Ts>(ts)...);
         }
 
         template <typename F, typename... Ts>
         static void call(launch::sync_policy const& /* policy */,
-            hpx::util::thread_description const& /* desc */, F&& f, Ts&&... ts)
+            hpx::util::thread_description const& /* desc */, F&& f,
+            Ts&&... ts) noexcept
         {
-            using result_type =
-                typename hpx::util::detail::invoke_deferred_result<F,
-                    Ts...>::type;
-
-            using is_void = typename std::is_void<result_type>::type;
-            hpx::detail::call_sync(
-                is_void{}, std::forward<F>(f), std::forward<Ts>(ts)...);
+            hpx::detail::call_sync(std::forward<F>(f), std::forward<Ts>(ts)...);
         }
     };
 }}}}    // namespace hpx::parallel::execution::detail

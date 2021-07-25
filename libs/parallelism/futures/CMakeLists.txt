@@ -7,6 +7,7 @@
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 set(futures_headers
+    hpx/futures/detail/execute_thread.hpp
     hpx/futures/future.hpp
     hpx/futures/future_fwd.hpp
     hpx/futures/futures_factory.hpp
@@ -50,7 +51,7 @@ set(futures_compat_headers
 )
 # cmake-format: on
 
-set(futures_sources future_data.cpp)
+set(futures_sources detail/execute_thread.cpp future_data.cpp)
 
 include(HPX_AddModule)
 add_hpx_module(

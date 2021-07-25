@@ -35,7 +35,8 @@
 #include <vector>
 
 namespace hpx { namespace parallel { namespace execution { namespace detail {
-    template <typename F, typename S, typename... Ts>
+
+    template <typename F, typename Launch, typename S, typename... Ts>
     std::vector<
         hpx::future<typename detail::bulk_function_result<F, S, Ts...>::type>>
     hierarchical_bulk_async_execute_helper(
@@ -43,14 +44,13 @@ namespace hpx { namespace parallel { namespace execution { namespace detail {
         threads::thread_pool_base* pool, threads::thread_priority priority,
         threads::thread_stacksize stacksize, threads::thread_schedule_hint,
         std::size_t first_thread, std::size_t num_threads,
-        std::size_t hierarchical_threshold, launch policy, F&& f,
+        std::size_t hierarchical_threshold, Launch policy, F&& f,
         S const& shape, Ts&&... ts)
     {
         HPX_ASSERT(pool);
 
-        typedef std::vector<hpx::future<
-            typename detail::bulk_function_result<F, S, Ts...>::type>>
-            result_type;
+        using result_type = std::vector<
+            hpx::future<typename detail::bulk_function_result_t<F, S, Ts...>>>;
 
         result_type results;
         std::size_t const size = hpx::util::size(shape);
@@ -61,7 +61,8 @@ namespace hpx { namespace parallel { namespace execution { namespace detail {
         auto it = std::begin(shape);
         for (std::size_t t = 0; t < num_threads; ++t)
         {
-            std::size_t const part_end = ((t + 1) * size) / num_threads;
+            std::size_t const part_end =
+                (std::min)(((t + 1) * size) / num_threads, size);
             std::size_t const part_size = part_end - part_begin;
 
             threads::thread_schedule_hint hint{
@@ -69,9 +70,8 @@ namespace hpx { namespace parallel { namespace execution { namespace detail {
 
             if (part_size > hierarchical_threshold)
             {
-                detail::post_policy_dispatch<decltype(policy)>::call(policy,
-                    desc, pool, priority, threads::thread_stacksize::small_,
-                    hint,
+                detail::post_policy_dispatch<Launch>::call(policy, desc, pool,
+                    priority, threads::thread_stacksize::small_, hint,
                     [&, hint, part_begin, part_end, part_size, f,
                         it]() mutable {
                         for (std::size_t part_i = part_begin; part_i < part_end;
@@ -79,8 +79,8 @@ namespace hpx { namespace parallel { namespace execution { namespace detail {
                         {
                             results[part_i] =
                                 hpx::detail::async_launch_policy_dispatch<
-                                    decltype(policy)>::call(policy, desc, pool,
-                                    priority, stacksize, hint, f, *it, ts...);
+                                    Launch>::call(policy, desc, pool, priority,
+                                    stacksize, hint, f, *it, ts...);
                             ++it;
                         }
                         l.count_down(part_size);
@@ -94,9 +94,9 @@ namespace hpx { namespace parallel { namespace execution { namespace detail {
                      ++part_i)
                 {
                     results[part_i] =
-                        hpx::detail::async_launch_policy_dispatch<decltype(
-                            policy)>::call(policy, desc, pool, priority,
-                            stacksize, hint, f, *it, ts...);
+                        hpx::detail::async_launch_policy_dispatch<Launch>::call(
+                            policy, desc, pool, priority, stacksize, hint, f,
+                            *it, ts...);
                     ++it;
                 }
                 l.count_down(part_size);
@@ -110,14 +110,14 @@ namespace hpx { namespace parallel { namespace execution { namespace detail {
         return results;
     }
 
-    template <typename F, typename S, typename... Ts>
+    template <typename F, typename Launch, typename S, typename... Ts>
     std::vector<
         hpx::future<typename detail::bulk_function_result<F, S, Ts...>::type>>
     hierarchical_bulk_async_execute_helper(threads::thread_pool_base* pool,
         threads::thread_priority priority, threads::thread_stacksize stacksize,
         threads::thread_schedule_hint hint, std::size_t first_thread,
         std::size_t num_threads, std::size_t hierarchical_threshold,
-        launch policy, F&& f, S const& shape, Ts&&... ts)
+        Launch policy, F&& f, S const& shape, Ts&&... ts)
     {
         hpx::util::thread_description const desc(f,
             "hpx::parallel::execution::detail::hierarchical_bulk_async_execute_"
@@ -146,17 +146,16 @@ namespace hpx { namespace parallel { namespace execution { namespace detail {
             hpx::make_tuple(std::forward<Ts>(ts)...));
 
         // void or std::vector<func_result_type>
-        using vector_result_type = typename detail::bulk_then_execute_result<F,
-            S, Future, Ts...>::type;
+        using vector_result_type = detail::bulk_then_execute_result_t<F,
+            S, Future, Ts...>;
 
         // future<vector_result_type>
         using result_future_type = hpx::future<vector_result_type>;
 
         using shared_state_type =
-            typename hpx::traits::detail::shared_state_ptr<
-                vector_result_type>::type;
+            hpx::traits::detail::shared_state_ptr_t<vector_result_type>;
 
-        using future_type = typename std::decay<Future>::type;
+        using future_type = std::decay_t<Future>;
 
         // vector<future<func_result_type>> -> vector<func_result_type>
         shared_state_type p = hpx::lcos::detail::make_continuation_exec_policy<

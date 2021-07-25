@@ -1,12 +1,18 @@
-# Copyright (c) 2007-2017 Hartmut Kaiser
+# Copyright (c) 2007-2021 Hartmut Kaiser
 # Copyright (c) 2011-2012 Bryce Adelstein-Lelbach
 #
 # SPDX-License-Identifier: BSL-1.0
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
-set(tests future future_ref future_then make_future make_ready_future
-          shared_future
+set(tests
+    direct_scoped_execution
+    future
+    future_ref
+    future_then
+    make_future
+    make_ready_future
+    shared_future
 )
 
 set(future_PARAMETERS THREADS_PER_LOCALITY 4)

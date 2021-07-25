@@ -1,4 +1,4 @@
-//  Copyright (c) 2007-2018 Hartmut Kaiser
+//  Copyright (c) 2007-2021 Hartmut Kaiser
 //
 //  SPDX-License-Identifier: BSL-1.0
 //  Distributed under the Boost Software License, Version 1.0. (See accompanying
@@ -9,6 +9,7 @@
 #include <hpx/config.hpp>
 #include <hpx/allocator_support/allocator_deleter.hpp>
 #include <hpx/allocator_support/internal_allocator.hpp>
+#include <hpx/assert.hpp>
 #include <hpx/async_base/launch_policy.hpp>
 #include <hpx/coroutines/thread_enums.hpp>
 #include <hpx/errors/try_catch_exception_ptr.hpp>
@@ -31,6 +32,7 @@
 #include <utility>
 
 namespace hpx { namespace lcos { namespace local {
+
     ///////////////////////////////////////////////////////////////////////
     namespace detail {
         template <typename Result, typename F, typename Executor,
@@ -126,7 +128,40 @@ namespace hpx { namespace lcos { namespace local {
                         threads::thread_schedule_state::pending_do_not_schedule,
                         true);
 
+                    if (schedulehint.runs_as_child)
+                    {
+                        HPX_ASSERT(
+                            this->runs_child_ == threads::invalid_thread_id);
+                        this->runs_child_ =
+                            threads::register_thread(data, pool, ec);
+                        return this->runs_child_;
+                    }
+
                     return threads::register_thread(data, pool, ec);
+                }
+
+                if (schedulehint.runs_as_child)
+                {
+                    // create the thread without running it
+                    threads::thread_init_data data(
+                        threads::make_thread_function_nullary(
+                            util::deferred_call(
+                                &base_type::run_impl, std::move(this_))),
+                        util::thread_description(f_, annotation), priority,
+                        schedulehint, stacksize,
+                        threads::thread_schedule_state::suspended, true);
+
+                    HPX_ASSERT(this->runs_child_ == threads::invalid_thread_id);
+                    this->runs_child_ =
+                        threads::register_thread(data, pool, ec);
+
+                    // now run the thread
+                    threads::set_thread_state(this->runs_child_.noref(),
+                        threads::thread_schedule_state::pending,
+                        threads::thread_restart_state::signaled, priority, true,
+                        ec);
+
+                    return this->runs_child_;
                 }
 
                 threads::thread_init_data data(
